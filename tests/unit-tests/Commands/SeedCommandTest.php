@@ -18,12 +18,12 @@ use Hyn\Tenancy\Database\Console\Seeds\SeedCommand;
 use Hyn\Tenancy\Models\Website;
 use Illuminate\Contracts\Console\Kernel;
 use Hyn\Tenancy\Tests\Seeds\SampleSeeder;
+use Illuminate\Support\Facades\Schema;
+use PHPUnit\Framework\Attributes\Test;
 
-class SeedCommandTest extends DatabaseCommandTest
+class SeedCommandTest extends DatabaseCommandTestCase
 {
-    /**
-     * @test
-     */
+    #[Test]
     public function is_ioc_bound()
     {
         $this->assertInstanceOf(
@@ -32,9 +32,7 @@ class SeedCommandTest extends DatabaseCommandTest
         );
     }
 
-    /**
-     * @test
-     */
+    #[Test]
     public function runs_seed_on_one_tenant()
     {
         /** @var Website $otherWebsite */
@@ -49,8 +47,8 @@ class SeedCommandTest extends DatabaseCommandTest
 
         $this->connection->set($this->website);
 
-        $this->assertFalse($this->connection->get()->getDoctrineSchemaManager()->tablesExist('users'));
-        $this->assertTrue($this->connection->get()->getDoctrineSchemaManager()->tablesExist('samples'));
+        $this->assertFalse(Schema::connection($this->connection->tenantName())->hasTable('users'));
+        $this->assertTrue(Schema::connection($this->connection->tenantName())->hasTable('samples'));
 
         $this->assertGreaterThan(
             0,
@@ -67,9 +65,7 @@ class SeedCommandTest extends DatabaseCommandTest
         );
     }
 
-    /**
-     * @test
-     */
+    #[Test]
     public function runs_configured_seed()
     {
         $this->migrateAndTest('migrate');
@@ -87,25 +83,23 @@ class SeedCommandTest extends DatabaseCommandTest
 
         $this->connection->set($this->website);
 
-        $this->assertFalse($this->connection->get()->getDoctrineSchemaManager()->tablesExist('users'));
-        $this->assertTrue($this->connection->get()->getDoctrineSchemaManager()->tablesExist('samples'));
+        $this->assertFalse(Schema::connection($this->connection->tenantName())->hasTable('users'));
+        $this->assertTrue(Schema::connection($this->connection->tenantName())->hasTable('samples'));
     }
 
-    /**
-     * @test
-     */
+    #[Test]
     public function runs_seed_on_tenants()
     {
         $this->connection->set($this->website);
 
-        $this->assertFalse($this->connection->get()->getDoctrineSchemaManager()->tablesExist('samples'));
+        $this->assertFalse(Schema::connection($this->connection->tenantName())->hasTable('samples'));
 
         $this->migrateAndTest('migrate');
 
         $this->seedAndTest(function (Website $website) {
             $this->connection->set($website);
 
-            $this->assertTrue($this->connection->get()->getDoctrineSchemaManager()->tablesExist('samples'));
+            $this->assertTrue(Schema::connection($this->connection->tenantName())->hasTable('samples'));
 
             $this->assertEquals(
                 2,
@@ -115,9 +109,7 @@ class SeedCommandTest extends DatabaseCommandTest
         });
     }
 
-    /**
-     * @test
-     */
+    #[Test]
     public function purges_connection_after_running_seed_on_multiple_tenants()
     {
         $website = new Website();
@@ -135,9 +127,7 @@ class SeedCommandTest extends DatabaseCommandTest
         $connection->shouldHaveReceived('purge')->twice();
     }
 
-    /**
-     * @test
-     */
+    #[Test]
     public function does_not_purge_connection_after_running_seed_on_one_tenant()
     {
         $this->migrateAndTest('migrate');

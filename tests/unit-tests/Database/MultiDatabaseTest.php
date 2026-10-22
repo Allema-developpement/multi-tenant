@@ -15,10 +15,11 @@
 namespace Hyn\Tenancy\Tests\Database;
 
 use Hyn\Tenancy\Database\Connection;
-use Hyn\Tenancy\Tests\Test;
+use Hyn\Tenancy\Tests\TestCase;
 use Illuminate\Contracts\Foundation\Application;
+use PHPUnit\Framework\Attributes\Test;
 
-class MultiDatabaseTest extends Test
+class MultiDatabaseTest extends TestCase
 {
     protected function duringSetUp(Application $app)
     {
@@ -31,9 +32,7 @@ class MultiDatabaseTest extends Test
         $this->setUpWebsites();
     }
 
-    /**
-     * @test
-     */
+    #[Test]
     public function allow_writing_to_secondary_database()
     {
         if (! env('IN_CI')) {
@@ -50,9 +49,17 @@ class MultiDatabaseTest extends Test
         // make sure the Website model still uses the regular system name.
         $this->assertEquals(app(Connection::class)->systemName(), $this->website->getConnectionName());
 
-        $this->assertTrue(in_array(
-            $this->website->uuid,
-            $this->getConnection('secondary')->getDoctrineSchemaManager()->listDatabases()
-        ));
+        $this->assertContains($this->website->uuid, $this->listDatabases($this->getConnection('secondary')));
+    }
+
+    /**
+     * @return string[]
+     */
+    protected function listDatabases(\Illuminate\Database\Connection $connection): array
+    {
+        return match ($connection->getDriverName()) {
+            'pgsql' => array_column($connection->select('select datname from pg_database'), 'datname'),
+            default => array_column($connection->select('show databases'), 'Database'),
+        };
     }
 }
